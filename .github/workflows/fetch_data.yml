@@ -1,7 +1,7 @@
 # ワークフロー名：GitHub Actionsの実行履歴に表示される名前
 name: Fetch and Merge Kanpo RSS Data
 
-# 実行トリガー：いつこのワークフローを実行するか
+# 実行トリガー
 on:
   push:
     branches:
@@ -19,9 +19,6 @@ jobs:
     # 1. リポジトリのチェックアウト（コードの取得）
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        # ★履歴の食い違いを防ぐため、fetch-depthを0に設定★
-        fetch-depth: 0 
 
     # 2. Python環境のセットアップ
     - name: Set up Python
@@ -43,12 +40,4 @@ jobs:
     - name: Run Python script
       run: python fetch_rss.py
       
-    # 6. 変更されたファイルのコミットとプッシュ
-    - name: Commit and push changes
-      uses: stefanzweifel/git-auto-commit-action@v5
-      with:
-        # ★★★ kanpo_feed.json のみの変更を対象とし、index.htmlは対象外とする ★★★
-        file_pattern: 'data/kanpo_feed.json' 
-        # ★★★ 履歴の食い違いを避けるため、プルオプションを強制 ★★★
-        pull_options: '--rebase'
-        commit_message: "Auto: Update kanpo-rss data with new entries"
+    # ★★★ 自動コミットステップを完全に削除しました ★★★
