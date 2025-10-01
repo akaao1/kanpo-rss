@@ -22,15 +22,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let htmlContent = '<ul>';
             
-            // 最新の5件だけを表示するための準備
-            // JSONの構造（data.items配列）を仮定して処理します
-            // items配列がデータの実体です
-            const itemsToShow = data.items.slice(0, 5); 
+            // ★★★ 修正箇所: JSONの構造に合わせて data.entries を参照します ★★★
+            const itemsToShow = data.entries.slice(0, 5); 
 
             itemsToShow.forEach(item => { 
                 // 各記事の情報を使ってリスト要素を作成
-                // item.pubDate（公開日）を読みやすい形式に変換
-                const pubDate = new Date(item.pubDate).toLocaleDateString('ja-JP');
+                // item.published（公開日）を読みやすい形式に変換
+                const pubDate = new Date(item.published).toLocaleDateString('ja-JP');
                 
                 htmlContent += `
                     <li>
