@@ -42,27 +42,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 4. 作成したHTMLをWebページに挿入
             container.innerHTML = htmlContent;
-
-            // ----------------------------------------------------
-            // 最新のPDFを埋め込む処理
-            // ----------------------------------------------------
-            if (data.entries && data.entries.length > 0) {
-                // 官報のフィードでは、通常最初の記事のリンクがPDF本体（総合面）へのリンクです
-                const latestPdfUrl = data.entries[0].link;
-                
-                const pdfViewer = document.getElementById('pdf-viewer');
-                const pdfLink = document.getElementById('pdf-link');
-                
-                // iframeのsrc属性にPDFのURLを設定して埋め込み表示
-                if (pdfViewer) {
-                    pdfViewer.src = latestPdfUrl;
-                }
-                // 代替リンクも最新のPDFに設定
-                if (pdfLink) {
-                    pdfLink.href = latestPdfUrl;
-                }
-            }
-            // ----------------------------------------------------
         })
         .catch(error => {
             // エラーが発生した場合のメッセージ表示
