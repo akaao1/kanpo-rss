@@ -12,6 +12,9 @@ on:
 
 jobs:
   build:
+    # 権限の再確認: 以前設定してもらった「Read and write permissions」が必須
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
@@ -19,6 +22,9 @@ jobs:
     # 1. リポジトリのチェックアウト（コードの取得）
     - name: Checkout repository
       uses: actions/checkout@v4
+      # 履歴の食い違いを防ぐため、fetch-depthを0に設定
+      with:
+        fetch-depth: 0 
 
     # 2. Python環境のセットアップ
     - name: Set up Python
@@ -31,7 +37,7 @@ jobs:
       run: |
         pip install feedparser
         
-    # 4. データディレクトリの作成（もし存在しなければ）
+    # 4. データディレクトリの作成
     - name: Create data directory
       run: |
         mkdir -p data
@@ -40,4 +46,12 @@ jobs:
     - name: Run Python script
       run: python fetch_rss.py
       
-    # ★★★ 自動コミットステップを完全に削除しました ★★★
+    # 6. 変更されたファイルのコミットとプッシュ
+    - name: Commit and push changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        # data/kanpo_feed.json のみの変更をコミット
+        file_pattern: 'data/kanpo_feed.json' 
+        commit_message: "Auto: Update kanpo-rss data with new entries"
+        # ★★★ 最も重要な修正: 強制プッシュ（--force）を設定し、拒否を無視させる ★★★
+        push_options: '--force'
