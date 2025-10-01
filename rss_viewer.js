@@ -4,7 +4,7 @@ let articlesByDate = {}; // 日付をキーとして記事を格納する辞書
 let currentMonth = new Date(); // 現在表示しているカレンダーの月
 let selectedDate = null; // 現在選択している日付
 
-// DOM要素
+// DOM要素の取得
 const container = document.getElementById('rss-output');
 const monthDisplay = document.getElementById('current-month-display');
 const calendarGrid = document.getElementById('calendar-grid');
@@ -16,8 +16,13 @@ const nextMonthButton = document.getElementById('next-month');
 // ユーティリティ関数
 // ----------------------------------------------------
 
-// Dateオブジェクトから 'YYYY-MM-DD' 形式の文字列を取得
+/**
+ * Dateオブジェクトから 'YYYY-MM-DD' 形式の文字列を取得
+ * @param {Date} date
+ * @returns {string} 
+ */
 function formatDate(date) {
+    // タイムゾーンのズレを避けるため、UTCベースで日付を取得
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
@@ -28,13 +33,20 @@ function formatDate(date) {
 // カレンダーと表示のロジック
 // ----------------------------------------------------
 
-// 特定の日の記事だけをフィルタリングして表示する
+/**
+ * 特定の日の記事だけをフィルタリングして表示する
+ * @param {Date} date
+ */
 function displayArticlesByDate(date) {
+    if (!container) return; // コンテナがない場合は処理しない
+    
     const dateKey = formatDate(date);
     const articles = articlesByDate[dateKey] || [];
     
     // 日付表示を更新
-    selectedDateDisplay.textContent = `${date.getFullYear()}年 ${date.getMonth() + 1}月 ${date.getDate()}日の官報`;
+    if (selectedDateDisplay) {
+        selectedDateDisplay.textContent = `${date.getFullYear()}年 ${date.getMonth() + 1}月 ${date.getDate()}日の官報`;
+    }
 
     let htmlContent = '<ul>';
 
@@ -58,32 +70,41 @@ function displayArticlesByDate(date) {
 }
 
 
-// カレンダーの日付セルがクリックされたときの処理
+/**
+ * カレンダーの日付セルがクリックされたときの処理
+ * @param {Event} event
+ */
 function handleDateClick(event) {
     const cell = event.currentTarget;
     const dateString = cell.dataset.date; // YYYY-MM-DD
     
-    if (!dateString) return;
+    if (!dateString || cell.classList.contains('inactive')) return; // 日付がない、または非アクティブなセルは無視
 
     // 現在選択されているセルを解除
-    if (selectedDate) {
-        const prevSelectedCell = document.querySelector('.date-cell.selected');
-        if (prevSelectedCell) {
-            prevSelectedCell.classList.remove('selected');
-        }
+    const prevSelectedCell = document.querySelector('.date-cell.selected');
+    if (prevSelectedCell) {
+        prevSelectedCell.classList.remove('selected');
     }
 
     // 新しい日付を設定し、リストを表示
-    const newDate = new Date(dateString);
-    selectedDate = new Date(newDate.getTime() + (newDate.getTimezoneOffset() * 60000)); // UTCずれを補正
+    const parts = dateString.split('-').map(Number);
+    // YYYY-MM-DD から Date オブジェクトを生成 (ローカルタイムゾーンで解釈)
+    const newDate = new Date(parts[0], parts[1] - 1, parts[2]); 
+    
+    selectedDate = newDate;
     cell.classList.add('selected');
 
     displayArticlesByDate(selectedDate);
 }
 
 
-// カレンダーを生成し、データをマッピングする
+/**
+ * カレンダーを生成し、データをマッピングする
+ * @param {Date} targetMonth 
+ */
 function renderCalendar(targetMonth) {
+    if (!calendarGrid || !monthDisplay) return;
+
     // 表示月を更新
     monthDisplay.textContent = `${targetMonth.getFullYear()}年 ${targetMonth.getMonth() + 1}月`;
     calendarGrid.innerHTML = ''; // カレンダーをクリア
@@ -113,6 +134,7 @@ function renderCalendar(targetMonth) {
 
     // 前月の余白セル
     for (let i = 0; i < startingDayOfWeek; i++) {
+        // 余白セルの日付を計算
         const prevDate = lastDayOfPrevMonth - startingDayOfWeek + i + 1;
         const div = document.createElement('div');
         div.className = 'date-cell inactive';
@@ -168,8 +190,8 @@ function processKanpoData(data) {
     kanpoData.forEach(item => {
         // 'published' タイムスタンプを YYYY-MM-DD 形式に正規化
         const date = new Date(item.published);
-        // 時刻情報を無視し、日付だけをキーにする (タイムゾーンのズレを考慮した処理)
-        const dateKey = formatDate(new Date(date.getFullYear(), date.getMonth(), date.getDate()));
+        // 時刻情報を無視し、日付だけをキーにする
+        const dateKey = formatDate(date);
         
         if (!articlesByDate[dateKey]) {
             articlesByDate[dateKey] = [];
@@ -180,6 +202,7 @@ function processKanpoData(data) {
     // 最新の記事が存在する日を初期選択日とする
     if (kanpoData.length > 0) {
         const firstArticleDate = new Date(kanpoData[0].published);
+        // 時刻情報をリセットして、日付だけを保持
         selectedDate = new Date(firstArticleDate.getFullYear(), firstArticleDate.getMonth(), firstArticleDate.getDate());
     } else {
         selectedDate = new Date(); // データがない場合は今日
@@ -194,19 +217,29 @@ function processKanpoData(data) {
 
 // 月移動ボタンのイベントリスナーを設定
 function setupEventListeners() {
-    prevMonthButton.addEventListener('click', () => {
-        currentMonth.setMonth(currentMonth.getMonth() - 1);
-        renderCalendar(currentMonth);
-    });
+    if (prevMonthButton) {
+        prevMonthButton.addEventListener('click', () => {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            renderCalendar(currentMonth);
+        });
+    }
 
-    nextMonthButton.addEventListener('click', () => {
-        currentMonth.setMonth(currentMonth.getMonth() + 1);
-        renderCalendar(currentMonth);
-    });
+    if (nextMonthButton) {
+        nextMonthButton.addEventListener('click', () => {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            renderCalendar(currentMonth);
+        });
+    }
 }
 
 
 document.addEventListener('DOMContentLoaded', function() {
+    if (!container) {
+        console.error('HTML要素 #rss-output が見つかりません。HTMLを確認してください。');
+        return; 
+    }
+    
+    // イベントリスナーを設定
     setupEventListeners();
     
     const jsonUrl = './data/kanpo_feed.json'; 
@@ -220,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(processKanpoData)
         .catch(error => {
-            container.innerHTML = `<p style="color: red; text-align: center;">データを取得できませんでした: ${error.message}</p>`;
+            container.innerHTML = `<p style="color: red; text-align: center;">データを取得できませんでした。コンソールで詳細を確認してください: ${error.message}</p>`;
             console.error(error);
         });
 });
