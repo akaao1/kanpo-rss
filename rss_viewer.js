@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // データを表示するためのHTML要素（IDが'rss-output'の要素）を見つけます
     const container = document.getElementById('rss-output');
     
-    // ステップ1で作成したJSONファイルへのパスを指定します
+    // データファイルへのパスを指定します
     const jsonUrl = './data/kanpo_feed.json'; 
 
     // 1. JSONファイルを非同期で読み込み
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let htmlContent = '<ul>';
             
-            // ★★★ 修正箇所: JSONの構造に合わせて data.entries を参照します ★★★
+            // JSONの構造に合わせて data.entries を参照します
             const itemsToShow = data.entries.slice(0, 5); 
 
             itemsToShow.forEach(item => { 
@@ -42,6 +42,27 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 4. 作成したHTMLをWebページに挿入
             container.innerHTML = htmlContent;
+
+            // ----------------------------------------------------
+            // 最新のPDFを埋め込む処理
+            // ----------------------------------------------------
+            if (data.entries && data.entries.length > 0) {
+                // 官報のフィードでは、通常最初の記事のリンクがPDF本体（総合面）へのリンクです
+                const latestPdfUrl = data.entries[0].link;
+                
+                const pdfViewer = document.getElementById('pdf-viewer');
+                const pdfLink = document.getElementById('pdf-link');
+                
+                // iframeのsrc属性にPDFのURLを設定して埋め込み表示
+                if (pdfViewer) {
+                    pdfViewer.src = latestPdfUrl;
+                }
+                // 代替リンクも最新のPDFに設定
+                if (pdfLink) {
+                    pdfLink.href = latestPdfUrl;
+                }
+            }
+            // ----------------------------------------------------
         })
         .catch(error => {
             // エラーが発生した場合のメッセージ表示
