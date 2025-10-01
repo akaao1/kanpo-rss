@@ -34,79 +34,27 @@ h1 {
 }
 
 /* ---------------------------------------------------- */
-/* ★★★ カレンダーエリア スタイル ★★★ */
-/* カレンダーは静的化により機能しませんが、表示構造は維持 */
+/* ★★★ カレンダー要素の非表示（静的化対応） ★★★ */
 /* ---------------------------------------------------- */
 
-.calendar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding: 0 10px;
+/* カレンダー関連の要素をすべて非表示にします */
+#calendar-area {
+    display: none !important;
 }
 
-#current-month-display {
-    font-size: 20px;
-    color: #0077b6;
-    margin: 0;
+/* サイト概要の静的テキスト */
+.container > p {
+    margin-bottom: 25px !important;
+    color: #555 !important;
+    font-size: 14px !important;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 20px;
 }
 
-.calendar-header button {
-    background: #ccc; /* リンクを無効化するため、ボタンの色をグレーアウト */
-    color: #666;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 6px;
-    cursor: default;
-    font-size: 16px;
-    /* transition: background-color 0.2s;  ボタンのhover効果は削除 */
-}
-
-#calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr); /* 7曜日分の列を作成 */
-    gap: 5px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    /* カレンダーの日付セルは静的化により無効化 */
-}
-
-.day-name {
-    text-align: center;
-    font-weight: bold;
-    color: #777;
-    font-size: 13px;
-    padding-bottom: 5px;
-}
-
-.date-cell {
-    text-align: center;
-    padding: 8px 0;
-    border-radius: 4px;
-    cursor: default; /* クリック不可 */
-    font-size: 14px;
-    color: #555;
-}
 
 /* ---------------------------------------------------- */
-/* ★★★ 日付別ヘッダーと記事リスト スタイル (修正箇所) ★★★ */
+/* ★★★ 記事リスト スタイル ★★★ */
 /* ---------------------------------------------------- */
-
-.date-header-wrapper {
-    margin: 30px 0 15px;
-    padding-top: 15px;
-    border-top: 1px solid #eee;
-}
-
-#selected-date-display {
-    font-size: 24px;
-    color: #ccc; /* 日付表示はPythonで静的に生成される記事の最新日付に置き換わります */
-    margin: 0;
-    text-align: center;
-    padding: 10px 0;
-}
 
 #rss-output ul {
     list-style: none;
@@ -158,15 +106,6 @@ h1 {
     h1 {
         font-size: 22px;
         margin-bottom: 20px;
-    }
-    #current-month-display {
-        font-size: 18px;
-    }
-    .calendar-header button {
-        padding: 6px 12px;
-    }
-    #selected-date-display {
-        font-size: 20px;
     }
     #rss-output li p:first-child strong a {
         font-size: 15px;
