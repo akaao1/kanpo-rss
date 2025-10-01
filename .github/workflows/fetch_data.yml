@@ -54,4 +54,8 @@ jobs:
       with:
         # 変更があったJSONファイルのみを対象とする
         file_pattern: 'data/kanpo_feed.json'
+        # ★★★ 履歴の食い違いを避けるため、プルオプションを追加 ★★★
+        pull_options: '--rebase'
+        # ★★★ 常にファイルを追加する設定を強制 ★★★
+        force_add: true
         commit_message: "Auto: Update kanpo-rss data with new entries"
