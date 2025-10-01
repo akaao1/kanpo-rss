@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(JSON_FILE_URL);
             if (!response.ok) {
+                // ファイルが存在しない場合やHTTPエラーの場合
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
@@ -41,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('データの読み込み中にエラーが発生しました:', error);
-            rssOutput.innerHTML = `<p style="color: red;">フィードの表示中にエラーが発生しました: ${error.message}</p>`;
+            // 記事リスト表示部分にエラーメッセージを表示
+            rssOutput.innerHTML = `<p style="color: red;">フィードの表示中にエラーが発生しました。データファイルを確認してください: ${error.message}</p>`;
         }
     }
 
@@ -50,25 +52,25 @@ document.addEventListener('DOMContentLoaded', () => {
         articlesByDate = {};
         entries.forEach(entry => {
             try {
-                // published文字列を直接new Date()に渡すとCSPエラーの原因になる可能性があるため、
-                // より安全な解析方法（ISO 8601形式への変換）を試みる。
                 const dateObj = new Date(entry.published);
                 
-                // 日付オブジェクトが有効かチェック
                 if (isNaN(dateObj)) {
                     console.warn('無効な日付形式:', entry.published);
                     return; 
                 }
                 
+                // ★最終修正: toISOString() の代わりにローカル日付コンポーネントを使用し、日付ずれを解消
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
                 // 'YYYY-MM-DD'形式の日付キーを生成
-                const dateKey = dateObj.toISOString().substring(0, 10);
+                const dateKey = `${year}-${month}-${day}`;
                 
                 if (!articlesByDate[dateKey]) {
                     articlesByDate[dateKey] = [];
                 }
                 articlesByDate[dateKey].push(entry);
             } catch (e) {
-                // 日付解析エラーを無視
                 console.warn('日付解析エラー:', entry.published, e);
             }
         });
@@ -80,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** カレンダーを描画する */
     function renderCalendar() {
-        // カレンダーのクリアとヘッダー更新
         calendarGrid.innerHTML = '';
         currentMonthDisplay.textContent = formatMonthYear(currentDate);
 
@@ -96,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
             calendarGrid.appendChild(dayNameCell);
         });
 
-        // 月の開始曜日と日数の計算
         const firstDayOfMonth = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -113,18 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
             dateCell.classList.add('date-cell');
             dateCell.textContent = day;
             
-            // YYYY-MM-DD 形式の日付キーを生成
             const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             dateCell.dataset.date = dateKey;
             
-            // データが存在するかチェック
             if (articlesByDate[dateKey]) {
                 dateCell.classList.add('has-data');
             }
 
-            // クリックイベントの追加
             dateCell.addEventListener('click', (e) => {
-                // dataset.dateが存在しないセル（空のセルなど）は無視
                 if (!e.target.dataset.date || e.target.classList.contains('empty')) return; 
                 displayArticles(e.target.dataset.date);
                 highlightSelectedDate(e.target);
@@ -151,14 +147,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayDefaultArticles() {
         if (!kanpoData || kanpoData.length === 0) return;
 
-        // 全記事の最初の日付を取得
         const latestEntry = kanpoData[0];
         const dateObj = new Date(latestEntry.published);
-        const latestDateKey = dateObj.toISOString().substring(0, 10);
         
+        // ★最終修正: toISOString() の代わりにローカル日付コンポーネントを使用し、日付ずれを解消
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const latestDateKey = `${year}-${month}-${day}`;
+
         displayArticles(latestDateKey);
         
-        // カレンダーに最新日付をハイライト（現在の月であれば）
         const latestDate = new Date(latestDateKey);
         if (latestDate.getFullYear() === currentDate.getFullYear() && latestDate.getMonth() === currentDate.getMonth()) {
             const cell = document.querySelector(`.date-cell[data-date="${latestDateKey}"]`);
@@ -180,7 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '<ul>';
         articles.forEach(item => {
             const dateObj = new Date(item.published);
-            const pubDateKey = dateObj.toISOString().substring(0, 10);
+
+            // ★最終修正: toISOString() の代わりにローカル日付コンポーネントを使用し、日付ずれを解消
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const pubDateKey = `${year}-${month}-${day}`;
+            
             const pubDate = formatDateKey(pubDateKey);
 
             html += `
