@@ -50,8 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
         articlesByDate = {};
         entries.forEach(entry => {
             try {
-                // published文字列を直接new Date()に渡すとCSPエラーの原因になる可能性があるため、
-                // より安全な解析方法（ISO 8601形式への変換）を試みる。
                 const dateObj = new Date(entry.published);
                 
                 // 日付オブジェクトが有効かチェック
@@ -60,8 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     return; 
                 }
                 
+                // ★修正: toISOString() の代わりにローカル日付コンポーネントを使用し、日付ずれを解消
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
                 // 'YYYY-MM-DD'形式の日付キーを生成
-                const dateKey = dateObj.toISOString().substring(0, 10);
+                const dateKey = `${year}-${month}-${day}`;
                 
                 if (!articlesByDate[dateKey]) {
                     articlesByDate[dateKey] = [];
@@ -154,8 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 全記事の最初の日付を取得
         const latestEntry = kanpoData[0];
         const dateObj = new Date(latestEntry.published);
-        const latestDateKey = dateObj.toISOString().substring(0, 10);
         
+        // ★修正: toISOString() の代わりにローカル日付コンポーネントを使用し、日付ずれを解消
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const latestDateKey = `${year}-${month}-${day}`;
+
         displayArticles(latestDateKey);
         
         // カレンダーに最新日付をハイライト（現在の月であれば）
@@ -168,58 +175,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** 指定された日付の記事を表示する */
     function displayArticles(dateKey) {
-        const articles = articlesByDate[dateKey] || [];
-        
-        selectedDateDisplay.textContent = formatDateKey(dateKey);
-
-        if (articles.length === 0) {
-            rssOutput.innerHTML = '<p>この日の官報記事はありません。</p>';
-            return;
-        }
-
-        let html = '<ul>';
-        articles.forEach(item => {
-            const dateObj = new Date(item.published);
-            const pubDateKey = dateObj.toISOString().substring(0, 10);
-            const pubDate = formatDateKey(pubDateKey);
-
-            html += `
-                <li>
-                    <a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a>
-                    <small>公開日: ${pubDate}</small>
-                </li>
-            `;
-        });
-        html += '</ul>';
-        rssOutput.innerHTML = html;
-    }
-
-    // ----------------------------------------------------------------------
-    // 4. イベントリスナーとユーティリティ
-    // ----------------------------------------------------------------------
-
-    prevMonthButton.addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-    });
-
-    nextMonthButton.addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-    });
-
-    /** YYYY-MM-DD形式を「YYYY年M月D日」形式に変換 */
-    function formatDateKey(dateKey) {
-        const [year, month, day] = dateKey.split('-');
-        return `${year}年${parseInt(month)}月${parseInt(day)}日`;
-    }
-    
-    /** YYYY年M月形式に変換 */
-    function formatMonthYear(date) {
-        return `${date.getFullYear()}年${date.getMonth() + 1}月`;
-    }
-
-
-    // 初期実行
-    loadData();
-});
+        const articles = articlesByDate
