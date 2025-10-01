@@ -35,6 +35,7 @@ h1 {
 
 /* ---------------------------------------------------- */
 /* ★★★ カレンダーエリア スタイル ★★★ */
+/* カレンダーは静的化により機能しませんが、表示構造は維持 */
 /* ---------------------------------------------------- */
 
 .calendar-header {
@@ -52,18 +53,14 @@ h1 {
 }
 
 .calendar-header button {
-    background: #0077b6;
-    color: white;
+    background: #ccc; /* リンクを無効化するため、ボタンの色をグレーアウト */
+    color: #666;
     border: none;
     padding: 8px 15px;
     border-radius: 6px;
-    cursor: pointer;
+    cursor: default;
     font-size: 16px;
-    transition: background-color 0.2s;
-}
-
-.calendar-header button:hover {
-    background: #005f93;
+    /* transition: background-color 0.2s;  ボタンのhover効果は削除 */
 }
 
 #calendar-grid {
@@ -73,6 +70,7 @@ h1 {
     padding: 10px;
     background-color: #f9f9f9;
     border-radius: 8px;
+    /* カレンダーの日付セルは静的化により無効化 */
 }
 
 .day-name {
@@ -87,48 +85,13 @@ h1 {
     text-align: center;
     padding: 8px 0;
     border-radius: 4px;
-    cursor: pointer;
+    cursor: default; /* クリック不可 */
     font-size: 14px;
     color: #555;
-    transition: background-color 0.1s, color 0.1s;
 }
-
-/* 記事が存在する日 */
-.date-cell.has-data {
-    background-color: #e0f7ff; /* 薄い青色 */
-    font-weight: bold;
-    color: #0077b6;
-}
-
-.date-cell.has-data:hover {
-    background-color: #cceeff;
-}
-
-/* 選択中の日 */
-.date-cell.selected {
-    background-color: #0077b6 !important; /* 強制的にメインカラーに */
-    color: white !important;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-/* 今日の日 */
-.date-cell.today {
-    border: 2px solid #ff9900;
-}
-
-/* 該当月ではない日付 */
-.date-cell.inactive {
-    color: #bbb;
-    cursor: default;
-}
-
-/* 土曜日と日曜日 */
-.date-cell.sat { color: #38761d; } /* 土曜日: 緑 */
-.date-cell.sun { color: #cc0000; } /* 日曜日: 赤 */
 
 /* ---------------------------------------------------- */
-/* ★★★ 日付別ヘッダーと記事リスト スタイル ★★★ */
+/* ★★★ 日付別ヘッダーと記事リスト スタイル (修正箇所) ★★★ */
 /* ---------------------------------------------------- */
 
 .date-header-wrapper {
@@ -139,7 +102,7 @@ h1 {
 
 #selected-date-display {
     font-size: 24px;
-    color: #0077b6;
+    color: #ccc; /* 日付表示はPythonで静的に生成される記事の最新日付に置き換わります */
     margin: 0;
     text-align: center;
     padding: 10px 0;
@@ -159,7 +122,8 @@ h1 {
     border-bottom: none;
 }
 
-#rss-output p:first-child strong a {
+/* 記事タイトル（<a>タグ）のスタイル */
+#rss-output li p:first-child strong a {
     font-size: 17px;
     color: #2c3e50;
     text-decoration: none;
@@ -168,11 +132,13 @@ h1 {
     font-weight: 600;
 }
 
-#rss-output p:first-child strong a:hover {
+/* 記事タイトルホバー時のスタイル */
+#rss-output li p:first-child strong a:hover {
     text-decoration: underline;
     color: #0077b6;
 }
 
+/* 記事の公開日（<small>タグ）のスタイル */
 #rss-output p small {
     display: block;
     color: #7f8c8d;
@@ -202,7 +168,7 @@ h1 {
     #selected-date-display {
         font-size: 20px;
     }
-    #rss-output p:first-child strong a {
+    #rss-output li p:first-child strong a {
         font-size: 15px;
     }
 }
