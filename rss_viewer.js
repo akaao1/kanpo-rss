@@ -50,8 +50,19 @@ document.addEventListener('DOMContentLoaded', () => {
         articlesByDate = {};
         entries.forEach(entry => {
             try {
-                // '2025-10-01'形式の日付キーを生成
-                const dateKey = new Date(entry.published).toISOString().substring(0, 10);
+                // published文字列を直接new Date()に渡すとCSPエラーの原因になる可能性があるため、
+                // より安全な解析方法（ISO 8601形式への変換）を試みる。
+                const dateObj = new Date(entry.published);
+                
+                // 日付オブジェクトが有効かチェック
+                if (isNaN(dateObj)) {
+                    console.warn('無効な日付形式:', entry.published);
+                    return; 
+                }
+                
+                // 'YYYY-MM-DD'形式の日付キーを生成
+                const dateKey = dateObj.toISOString().substring(0, 10);
+                
                 if (!articlesByDate[dateKey]) {
                     articlesByDate[dateKey] = [];
                 }
@@ -101,16 +112,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateCell = document.createElement('div');
             dateCell.classList.add('date-cell');
             dateCell.textContent = day;
-            dateCell.dataset.date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            
+            // YYYY-MM-DD 形式の日付キーを生成
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            dateCell.dataset.date = dateKey;
             
             // データが存在するかチェック
-            if (articlesByDate[dateCell.dataset.date]) {
+            if (articlesByDate[dateKey]) {
                 dateCell.classList.add('has-data');
             }
 
             // クリックイベントの追加
             dateCell.addEventListener('click', (e) => {
-                if (e.target.classList.contains('empty')) return;
+                // dataset.dateが存在しないセル（空のセルなど）は無視
+                if (!e.target.dataset.date || e.target.classList.contains('empty')) return; 
                 displayArticles(e.target.dataset.date);
                 highlightSelectedDate(e.target);
             });
@@ -136,9 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayDefaultArticles() {
         if (!kanpoData || kanpoData.length === 0) return;
 
-        // 全記事の最初の日付を取得 (データは最新順にソートされているはず)
+        // 全記事の最初の日付を取得
         const latestEntry = kanpoData[0];
-        const latestDateKey = new Date(latestEntry.published).toISOString().substring(0, 10);
+        const dateObj = new Date(latestEntry.published);
+        const latestDateKey = dateObj.toISOString().substring(0, 10);
         
         displayArticles(latestDateKey);
         
@@ -163,7 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = '<ul>';
         articles.forEach(item => {
-            const pubDate = formatDateKey(new Date(item.published).toISOString().substring(0, 10));
+            const dateObj = new Date(item.published);
+            const pubDateKey = dateObj.toISOString().substring(0, 10);
+            const pubDate = formatDateKey(pubDateKey);
 
             html += `
                 <li>
