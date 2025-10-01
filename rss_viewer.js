@@ -5,6 +5,7 @@ let currentMonth = new Date(); // 現在表示しているカレンダーの月
 let selectedDate = null; // 現在選択している日付
 
 // DOM要素の取得
+// DOMContentLoadedで実行されるため、ここでは要素の存在チェックは省略
 const container = document.getElementById('rss-output');
 const monthDisplay = document.getElementById('current-month-display');
 const calendarGrid = document.getElementById('calendar-grid');
@@ -22,7 +23,6 @@ const nextMonthButton = document.getElementById('next-month');
  * @returns {string} 
  */
 function formatDate(date) {
-    // タイムゾーンのズレを避けるため、UTCベースで日付を取得
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
@@ -38,7 +38,7 @@ function formatDate(date) {
  * @param {Date} date
  */
 function displayArticlesByDate(date) {
-    if (!container) return; // コンテナがない場合は処理しない
+    if (!container) return;
     
     const dateKey = formatDate(date);
     const articles = articlesByDate[dateKey] || [];
@@ -53,6 +53,7 @@ function displayArticlesByDate(date) {
     if (articles.length === 0) {
         htmlContent = `<p style="text-align: center; color: #777; padding-top: 20px;">この日の官報記事は見つかりませんでした。</p>`;
     } else {
+        // 記事は既に新しい順（降順）で格納されていると仮定
         articles.forEach(item => {
             const pubDate = new Date(item.published).toLocaleDateString('ja-JP');
             
@@ -66,6 +67,7 @@ function displayArticlesByDate(date) {
         htmlContent += '</ul>';
     }
     
+    // innerHTMLはCSPの警告を出すことがありますが、必須のため使用を維持します
     container.innerHTML = htmlContent;
 }
 
@@ -78,7 +80,7 @@ function handleDateClick(event) {
     const cell = event.currentTarget;
     const dateString = cell.dataset.date; // YYYY-MM-DD
     
-    if (!dateString || cell.classList.contains('inactive')) return; // 日付がない、または非アクティブなセルは無視
+    if (!dateString || cell.classList.contains('inactive')) return;
 
     // 現在選択されているセルを解除
     const prevSelectedCell = document.querySelector('.date-cell.selected');
@@ -88,7 +90,7 @@ function handleDateClick(event) {
 
     // 新しい日付を設定し、リストを表示
     const parts = dateString.split('-').map(Number);
-    // YYYY-MM-DD から Date オブジェクトを生成 (ローカルタイムゾーンで解釈)
+    // YYYY-MM-DD から Date オブジェクトを安全に生成
     const newDate = new Date(parts[0], parts[1] - 1, parts[2]); 
     
     selectedDate = newDate;
@@ -107,7 +109,7 @@ function renderCalendar(targetMonth) {
 
     // 表示月を更新
     monthDisplay.textContent = `${targetMonth.getFullYear()}年 ${targetMonth.getMonth() + 1}月`;
-    calendarGrid.innerHTML = ''; // カレンダーをクリア
+    calendarGrid.innerHTML = ''; 
     
     const year = targetMonth.getFullYear();
     const month = targetMonth.getMonth(); // 0-based
@@ -121,20 +123,16 @@ function renderCalendar(targetMonth) {
         calendarGrid.appendChild(div);
     });
 
-    // その月の1日
+    // 必要な日付計算
     const firstDayOfMonth = new Date(year, month, 1);
-    // 1日の曜日 (0=日, 1=月, ...)
     const startingDayOfWeek = firstDayOfMonth.getDay();
-    // 前月の最終日
     const lastDayOfPrevMonth = new Date(year, month, 0).getDate();
-    // その月の最終日
     const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
     
     const todayKey = formatDate(new Date());
 
     // 前月の余白セル
     for (let i = 0; i < startingDayOfWeek; i++) {
-        // 余白セルの日付を計算
         const prevDate = lastDayOfPrevMonth - startingDayOfWeek + i + 1;
         const div = document.createElement('div');
         div.className = 'date-cell inactive';
@@ -146,7 +144,7 @@ function renderCalendar(targetMonth) {
     for (let day = 1; day <= lastDayOfMonth; day++) {
         const date = new Date(year, month, day);
         const dateKey = formatDate(date);
-        const dayOfWeek = date.getDay(); // 0=日, 6=土
+        const dayOfWeek = date.getDay();
         
         const div = document.createElement('div');
         div.className = 'date-cell';
@@ -172,7 +170,8 @@ function renderCalendar(targetMonth) {
              div.classList.add('selected');
         }
 
-        div.addEventListener('click', handleDateClick);
+        // onclick属性を使わず、安全なaddEventListenerを使用
+        div.addEventListener('click', handleDateClick); 
         calendarGrid.appendChild(div);
     }
 }
@@ -188,10 +187,9 @@ function processKanpoData(data) {
     articlesByDate = {}; // リセット
 
     kanpoData.forEach(item => {
-        // 'published' タイムスタンプを YYYY-MM-DD 形式に正規化
         const date = new Date(item.published);
         // 時刻情報を無視し、日付だけをキーにする
-        const dateKey = formatDate(date);
+        const dateKey = formatDate(new Date(date.getFullYear(), date.getMonth(), date.getDate()));
         
         if (!articlesByDate[dateKey]) {
             articlesByDate[dateKey] = [];
@@ -202,7 +200,6 @@ function processKanpoData(data) {
     // 最新の記事が存在する日を初期選択日とする
     if (kanpoData.length > 0) {
         const firstArticleDate = new Date(kanpoData[0].published);
-        // 時刻情報をリセットして、日付だけを保持
         selectedDate = new Date(firstArticleDate.getFullYear(), firstArticleDate.getMonth(), firstArticleDate.getDate());
     } else {
         selectedDate = new Date(); // データがない場合は今日
@@ -234,8 +231,9 @@ function setupEventListeners() {
 
 
 document.addEventListener('DOMContentLoaded', function() {
+    // コンテナの存在チェックは必須
     if (!container) {
-        console.error('HTML要素 #rss-output が見つかりません。HTMLを確認してください。');
+        console.error('致命的エラー: HTML要素 #rss-output が見つかりません。');
         return; 
     }
     
@@ -247,13 +245,15 @@ document.addEventListener('DOMContentLoaded', function() {
     fetch(jsonUrl)
         .then(response => {
             if (!response.ok) {
-                throw new Error('データの読み込みに失敗しました。ファイルパスまたはGitHub Actionsを確認してください。');
+                // ファイルが見つからないなどのエラー
+                throw new Error('データの読み込みに失敗しました。');
             }
             return response.json();
         })
         .then(processKanpoData)
         .catch(error => {
-            container.innerHTML = `<p style="color: red; text-align: center;">データを取得できませんでした。コンソールで詳細を確認してください: ${error.message}</p>`;
-            console.error(error);
+            // データ取得失敗時の表示
+            container.innerHTML = `<p style="color: red; text-align: center;">データの取得中にエラーが発生しました: ${error.message}</p>`;
+            console.error('Fetch Error:', error);
         });
 });
