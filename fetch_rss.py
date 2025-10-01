@@ -10,6 +10,8 @@ from datetime import datetime
 RSS_URL = 'https://www.kanpo.go.jp/rss/latest.xml'
 # データファイルのパス
 JSON_FILE = 'data/kanpo_feed.json'
+# index.htmlファイルのパス (リポジトリのルートにある前提)
+INDEX_FILE = 'index.html' 
 
 # ----------------------------------------------------
 # メインデータ処理関数
@@ -21,7 +23,6 @@ def fetch_and_merge_data():
     """
     print(f"1. RSSフィード ({RSS_URL}) からデータを取得中...")
     
-    # 1. RSSフィードから最新データを取得
     feed = feedparser.parse(RSS_URL)
     
     new_entries = []
@@ -65,11 +66,9 @@ def fetch_and_merge_data():
     # 4. 日付順に並べ替え（最新の日付が上になるように降順でソート）
     def sort_key(entry):
         try:
-            # RFC 822形式
             return datetime.strptime(entry['published'], '%a, %d %b %Y %H:%M:%S %z')
         except ValueError:
             try:
-                # ISO 8601形式などの代替処理
                 return datetime.fromisoformat(entry['published'].replace('Z', '+00:00'))
             except ValueError:
                 return datetime.min
@@ -91,11 +90,10 @@ def fetch_and_merge_data():
 
     print(f"4. 最新のデータ ({len(merged_entries)} 件) を {JSON_FILE} に保存しました。")
     
-    # HTML更新のために最終データを返す
     return final_data
 
 # ----------------------------------------------------
-# HTML生成・更新のための関数（NotebookLM対策）
+# HTML生成・更新のための関数
 # ----------------------------------------------------
 
 def create_article_list_html(entries):
@@ -106,13 +104,13 @@ def create_article_list_html(entries):
         return '<p style="text-align: center; color: #777; padding-top: 20px;">記事が見つかりませんでした。</p>'
 
     for item in entries:
-        # 日付を読みやすい形式に整形
         try:
             date_obj = datetime.strptime(item['published'], '%a, %d %b %Y %H:%M:%S %z')
             pubDate = date_obj.strftime('%Y/%m/%d')
         except ValueError:
             pubDate = '日付不明' 
             
+        # 記事リストのHTMLを生成
         html_list += f"""
             <li>
                 <p><strong><a href="{item['link']}" target="_blank" rel="noopener noreferrer">{item['title']}</a></strong></p>
@@ -124,17 +122,16 @@ def create_article_list_html(entries):
 
 def update_index_html(html_list):
     """生成されたHTMLリストをindex.htmlの目印の間に書き込む"""
-    INDEX_FILE = 'index.html'
     
-    # 目印タグを定義（index.htmlで設定したものと完全に一致させる必要があります）
+    # 目印タグを定義
     START_TAG = ''
     END_TAG = ''
     
     try:
+        # index.htmlを読み込み
         with open(INDEX_FILE, 'r', encoding='utf-8') as f:
             html_content = f.read()
             
-        # 目印の間にあるコンテンツを検索
         start_index = html_content.find(START_TAG)
         end_index = html_content.find(END_TAG)
         
@@ -149,17 +146,17 @@ def update_index_html(html_list):
                 f.write(new_content)
             print(f"5. {INDEX_FILE} を静的な記事リストで更新しました。")
         else:
-            print(f"5. ERROR: {START_TAG} または {END_TAG} が {INDEX_FILE} 内に見つかりません。HTMLの目印を確認してください。")
+            print(f"5. ERROR: 目印タグが {INDEX_FILE} 内に見つかりません。HTMLの目印を確認してください。")
             
     except FileNotFoundError:
-        print(f"5. ERROR: {INDEX_FILE} が見つかりません。")
+        print(f"5. ERROR: {INDEX_FILE} が見つかりません。ファイルパスを確認してください。")
 
 
 # ----------------------------------------------------
 # スクリプト実行開始点
 # ----------------------------------------------------
 if __name__ == '__main__':
-    final_data = fetch_and_merge_data() # データ取得・マージ関数を実行し、最終データを取得
+    final_data = fetch_and_merge_data() # データ取得・マージ関数を実行
 
     # HTMLの更新
     if final_data and final_data.get('entries'):
