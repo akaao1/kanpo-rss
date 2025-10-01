@@ -1,27 +1,25 @@
 /*
  * 基本的なリセットとタイポグラフィ
- * サイト全体にモダンで読みやすいスタイルを適用
  */
 body {
-    font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif; /* 読みやすいゴシック体を優先 */
-    color: #333; /* 真っ黒ではなく、少し落ち着いた色 */
-    background-color: #f4f7f6; /* わずかに灰色がかった背景色 */
+    font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    color: #333;
+    background-color: #f4f7f6;
     margin: 0;
     padding: 0;
-    line-height: 1.6; /* 行間を広げて読みやすく */
+    line-height: 1.6;
 }
 
 /*
  * メインコンテナのスタイル
- * PCでもスマホでも中央寄せで見やすく
  */
 .container {
-    max-width: 800px; /* PCでの表示幅を制限 */
-    margin: 40px auto; /* 上下左右に適切な余白、中央寄せ */
-    padding: 20px;
-    background-color: #ffffff; /* コンテンツエリアの背景は白 */
-    border-radius: 12px; /* 角を少し丸くする */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* わずかな影でおしゃれに */
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 25px 30px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /*
@@ -29,60 +27,162 @@ body {
  */
 h1 {
     font-size: 28px;
-    color: #0077b6; /* 落ち着いた青色 */
-    border-bottom: 3px solid #0077b6; /* 下線でおしゃれに区切り */
-    padding-bottom: 10px;
+    color: #2c3e50;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 15px;
     margin-bottom: 30px;
 }
 
-/*
- * 記事リストのスタイル
- */
+/* ---------------------------------------------------- */
+/* ★★★ カレンダーエリア スタイル ★★★ */
+/* ---------------------------------------------------- */
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 0 10px;
+}
+
+#current-month-display {
+    font-size: 20px;
+    color: #0077b6;
+    margin: 0;
+}
+
+.calendar-header button {
+    background: #0077b6;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.calendar-header button:hover {
+    background: #005f93;
+}
+
+#calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* 7曜日分の列を作成 */
+    gap: 5px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.day-name {
+    text-align: center;
+    font-weight: bold;
+    color: #777;
+    font-size: 13px;
+    padding-bottom: 5px;
+}
+
+.date-cell {
+    text-align: center;
+    padding: 8px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: background-color 0.1s, color 0.1s;
+}
+
+/* 記事が存在する日 */
+.date-cell.has-data {
+    background-color: #e0f7ff; /* 薄い青色 */
+    font-weight: bold;
+    color: #0077b6;
+}
+
+.date-cell.has-data:hover {
+    background-color: #cceeff;
+}
+
+/* 選択中の日 */
+.date-cell.selected {
+    background-color: #0077b6 !important; /* 強制的にメインカラーに */
+    color: white !important;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* 今日の日 */
+.date-cell.today {
+    border: 2px solid #ff9900;
+}
+
+/* 該当月ではない日付 */
+.date-cell.inactive {
+    color: #bbb;
+    cursor: default;
+}
+
+/* 土曜日と日曜日 */
+.date-cell.sat { color: #38761d; } /* 土曜日: 緑 */
+.date-cell.sun { color: #cc0000; } /* 日曜日: 赤 */
+
+/* ---------------------------------------------------- */
+/* ★★★ 日付別ヘッダーと記事リスト スタイル ★★★ */
+/* ---------------------------------------------------- */
+
+.date-header-wrapper {
+    margin: 30px 0 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+#selected-date-display {
+    font-size: 24px;
+    color: #0077b6;
+    margin: 0;
+    text-align: center;
+    padding: 10px 0;
+}
+
 #rss-output ul {
-    list-style: none; /* デフォルトの丸点（黒丸）を削除 */
+    list-style: none;
     padding: 0;
 }
 
 #rss-output li {
-    border-bottom: 1px solid #eee; /* 各記事の下に細い区切り線 */
+    border-bottom: 1px solid #eee;
     padding: 15px 0;
-    transition: background-color 0.2s; /* ホバー時のアニメーション */
 }
 
-/* リストアイテムにマウスを乗せたときのスタイル */
-#rss-output li:hover {
-    background-color: #f0f8ff; /* わずかに薄い青色に */
+#rss-output li:last-child {
+    border-bottom: none;
 }
 
-/*
- * 記事タイトルのスタイル (リンク)
- */
 #rss-output p:first-child strong a {
-    font-size: 18px;
-    color: #2c3e50; /* 濃いめの落ち着いた色 */
-    text-decoration: none; /* デフォルトの下線を削除 */
-    display: block; /* クリックしやすいように */
-    margin-bottom: 5px;
+    font-size: 17px;
+    color: #2c3e50;
+    text-decoration: none;
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 600;
 }
 
-/* リンクにマウスを乗せたときの下線 */
 #rss-output p:first-child strong a:hover {
     text-decoration: underline;
-    color: #0077b6; /* メインカラーと合わせる */
+    color: #0077b6;
 }
 
-/*
- * 公開日のスタイル
- */
 #rss-output p small {
     display: block;
-    color: #7f8c8d; /* 控えめな灰色 */
+    color: #7f8c8d;
     font-size: 13px;
-    padding-left: 2px; /* 少しずらして見やすく */
+    padding-left: 0; 
 }
 
+
 /*
- * モバイルフレンドリー（画面が狭いときの調整）
+ * モバイルフレンドリー
  */
 @media (max-width: 600px) {
     .container {
@@ -90,10 +190,19 @@ h1 {
         padding: 15px;
     }
     h1 {
-        font-size: 24px;
+        font-size: 22px;
         margin-bottom: 20px;
     }
+    #current-month-display {
+        font-size: 18px;
+    }
+    .calendar-header button {
+        padding: 6px 12px;
+    }
+    #selected-date-display {
+        font-size: 20px;
+    }
     #rss-output p:first-child strong a {
-        font-size: 16px;
+        font-size: 15px;
     }
 }
