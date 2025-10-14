@@ -1,9 +1,9 @@
 name: Fetch Kanpo RSS Feed
 
 on:
-  # 毎日、日本時間の午前3時（UTC 18:00）に実行するスケジュール設定
+  # 毎日、日本時間の午前8時45分（UTC 23:45）に実行するスケジュール設定
   schedule:
-    - cron: '0 18 * * *' 
+    - cron: '45 23 * * *' 
   # Actionsタブから手動で実行できるようにするボタンを追加
   workflow_dispatch:
 
