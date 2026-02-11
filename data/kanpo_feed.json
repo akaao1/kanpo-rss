@@ -1,10 +1,5 @@
 {
-  "title": "官報RSS目次別(非公式)フィード",
-  "link": "https://www.kanpo.go.jp/",
-  "description": "これは官報の非公式更新通知RSS（目次別）です。基本的に毎日8:35分ごろに更新内容を確認して、RSSをプッシュします",
-  "language": "ja",
-  "generator": "testkun08080",
-  "published": "2026-02-10T11:42:38.000Z",
+  "updated_at": "2026-02-11T02:00:25.742200",
   "entries": [
     {
       "id": "9dbf8005d4092b68f44a8cf40be62d43",
