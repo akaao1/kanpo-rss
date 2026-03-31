@@ -1,60 +1,98 @@
-name: Fetch and Merge Kanpo RSS Data
+import feedparser
+import json
+import os
+from datetime import datetime
+import requests
+import urllib3
 
-on:
-  push:
-    branches:
-      - main
-      - master
-  schedule:
-    - cron: "0 0 * * *"   # 毎日 00:00 UTC（= JST 09:00）
-  workflow_dispatch: {}
+RSS_URL = "https://www.kanpo.go.jp/rss/latest.xml"
+JSON_FILE = "data/kanpo_feed.json"
+LOCAL_XML = "data/latest.xml"
 
-permissions:
-  contents: write
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+def fetch_feed_content() -> bytes:
+    """
+    1) data/latest.xml があればそれを読む（Actionsでcurl/wgetした結果）
+    2) なければ従来どおり requests で取りに行く（ローカル実行用の保険）
+    """
+    if os.path.exists(LOCAL_XML):
+        with open(LOCAL_XML, "rb") as f:
+            return f.read()
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    # ローカル実行など、XMLが無い場合の保険
+    r = requests.get(
+        RSS_URL,
+        timeout=30,
+        verify=False,
+        headers={"User-Agent": "kanpo-rss-fetch/1.0 (+https://github.com/)"},
+    )
+    r.raise_for_status()
+    return r.content
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
 
-      # ★これが「出るか出ないか」で、反映できたか一発で分かります
-      - name: Verify imports
-        run: |
-          python -c "import requests, feedparser, certifi; print('OK:', requests.__version__, feedparser.__version__, certifi.__version__)"
+def fetch_and_merge_data():
+    print(f"1. RSSフィード ({RSS_URL}) からデータを取得中...")
 
-      - name: Create data directory
-        run: |
-          mkdir -p data
+    content = fetch_feed_content()
+    feed = feedparser.parse(content)
 
-      - name: Run Python script
-        run: |
-          python fetch_rss.py
+    if getattr(feed, "bozo", 0) == 1:
+        print("   => RSS解析中に警告/エラー（bozo=1）")
+        print(f"      bozo_exception: {getattr(feed, 'bozo_exception', None)}")
 
-      - name: Commit and push changes (if any)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+    new_entries = []
+    for entry in feed.entries:
+        published_date = getattr(entry, "published", None)
+        if entry.title and entry.link and published_date:
+            new_entries.append(
+                {
+                    "title": entry.title,
+                    "link": entry.link,
+                    "published": published_date,
+                    "id": getattr(entry, "id", entry.link),
+                }
+            )
 
-          if git diff --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
+    print(f"   => RSSフィードから {len(new_entries)} 件の記事を取得しました。")
 
-          git add data/kanpo_feed.json
-          git commit -m "Auto: Update kanpo-rss data with new entries"
-          git push
+    old_entries = []
+    if os.path.exists(JSON_FILE):
+        try:
+            with open(JSON_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                old_entries = data.get("entries", [])
+            print(f"2. 既存のJSONファイルから {len(old_entries)} 件の記事を読み込みました。")
+        except json.JSONDecodeError:
+            print("2. 既存のJSONファイルの形式が不正です。新規として続行します。")
+
+    existing_ids = {e.get("id") for e in old_entries if e.get("id")}
+    unique_new_entries = [e for e in new_entries if e["id"] not in existing_ids]
+    merged_entries = unique_new_entries + old_entries
+    print(f"3. {len(unique_new_entries)} 件の新しい記事を追加しました。")
+
+    def sort_key(entry):
+        try:
+            return datetime.strptime(entry["published"], "%a, %d %b %Y %H:%M:%S %z")
+        except ValueError:
+            try:
+                return datetime.fromisoformat(entry["published"].replace("Z", "+00:00"))
+            except ValueError:
+                return datetime.min
+
+    merged_entries.sort(key=sort_key, reverse=True)
+    print(f"   => 合計 {len(merged_entries)} 件の記事を最新順に並べ替えました。")
+
+    final_data = {"updated_at": datetime.now().isoformat(), "entries": merged_entries}
+
+    os.makedirs(os.path.dirname(JSON_FILE), exist_ok=True)
+    with open(JSON_FILE, "w", encoding="utf-8") as f:
+        json.dump(final_data, f, ensure_ascii=False, indent=2)
+
+    print(f"4. 最新のデータ ({len(merged_entries)} 件) を {JSON_FILE} に保存しました。")
+
+
+if __name__ == "__main__":
+    fetch_and_merge_data()
+``
