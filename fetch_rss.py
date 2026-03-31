@@ -1,101 +1,119 @@
-import feedparser
 import json
 import os
+import re
 from datetime import datetime
-import requests
-import urllib3
+from html.parser import HTMLParser
+from urllib.parse import urljoin
 
-# ----------------------------------------------------
-# 設定
-# ----------------------------------------------------
-# 公式kanpo.go.jpの /rss/latest.xml は 404 なので、
-# 動作するRSS配信元（第三者）に切替
-RSS_URL = "https://martians-sheep.github.io/kanpo-rss/feed.xml"
+import requests
+
+BASE_URL = "https://www.kanpo.go.jp/"
 JSON_FILE = "data/kanpo_feed.json"
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def fetch_feed_content(url: str) -> bytes:
+class LinkExtractor(HTMLParser):
+    """HTMLからaタグのhrefとテキストを拾うだけの最小パーサ"""
+    def __init__(self):
+        super().__init__()
+        self.links = []
+        self._in_a = False
+        self._href = None
+        self._text_parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() == "a":
+            self._in_a = True
+            self._href = dict(attrs).get("href")
+            self._text_parts = []
+
+    def handle_data(self, data):
+        if self._in_a and data:
+            self._text_parts.append(data.strip())
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "a" and self._in_a:
+            text = " ".join([t for t in self._text_parts if t]).strip()
+            self.links.append((self._href, text))
+            self._in_a = False
+            self._href = None
+            self._text_parts = []
+
+
+def fetch_top_page_html() -> str:
+    # 重要：低頻度・短時間・UA明示（サイト負荷を上げない）
     r = requests.get(
-        url,
-        timeout=30,
-        verify=True,  # 第三者GitHub Pagesは通常verifyでOK
-        headers={"User-Agent": "kanpo-rss-fetch/1.0 (+https://github.com/)"},
+        BASE_URL,
+        timeout=20,
+        headers={"User-Agent": "kanpo-minimal-fetch/1.0 (+https://github.com/)"},
     )
     r.raise_for_status()
-    return r.content
+    return r.text
 
-def fetch_and_merge_data():
-    print(f"1. RSSフィード ({RSS_URL}) からデータを取得中...")
 
+def extract_publish_date_from_html(html: str) -> str:
+    """
+    トップページ内の「令和 8年3月31日」のような表記を探して、
+    1つ見つかったものを published に使う（見つからなければ今日の日付）
+    """
+    m = re.search(r"令和\s*\d+\s*年\s*\d+\s*月\s*\d+\s*日", html)
+    if m:
+        return m.group(0).replace(" ", "")
+    return datetime.now().date().isoformat()
+
+
+def pick_today_links(html: str):
+    """
+    トップページ内のリンクから「本日の官報」っぽいものを抽出する。
+    なるべく“URLパターン”で拾う（HTML構造変更に強くする）
+    """
+    parser = LinkExtractor()
+    parser.feed(html)
+
+    candidates = []
+    for href, text in parser.links:
+        if not href:
+            continue
+        abs_url = urljoin(BASE_URL, href)
+
+        # 官報ドメインのリンクだけ対象
+        if not abs_url.startswith("https://www.kanpo.go.jp/"):
+            continue
+
+        # 今日の官報付近のリンクは /YYYYMMDD/ を含むことが多い（例：/20260316/…）
+        # ただし必須ではないので、スコアリングで優先度付けする
+        score = 0
+        if re.search(r"/\d{8}/", abs_url):
+            score += 3
+        if "/pdf/" in abs_url:
+            score += 2
+        if any(k in text for k in ["本紙", "号外", "政府調達", "特別号外", "全体目次"]):
+            score += 2
+
+        # ある程度それっぽいものだけ残す
+        if score >= 2:
+            candidates.append((score, abs_url, text))
+
+    # スコア降順で上位を返す（重複URLは除く）
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    seen = set()
+    results = []
+    for score, url, text in candidates:
+        if url in seen:
+            continue
+        seen.add(url)
+        results.append((url, text, score))
+    return results
+
+
+def load_old_entries():
+    if not os.path.exists(JSON_FILE):
+        return []
     try:
-        content = fetch_feed_content(RSS_URL)
-    except Exception as e:
-        print("   => RSS取得に失敗しました。以下のエラー内容を確認してください：")
-        print(f"      {type(e).__name__}: {e}")
-        raise
+        with open(JSON_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("entries", [])
+    except json.JSONDecodeError:
+        return []
 
-    feed = feedparser.parse(content)
 
-    if getattr(feed, "bozo", 0) == 1:
-        print("   => RSS解析中に警告/エラーが出ています（bozo=1）。")
-        print(f"      bozo_exception: {getattr(feed, 'bozo_exception', None)}")
-
-    new_entries = []
-    for entry in feed.entries:
-        published_date = getattr(entry, "published", None) or getattr(entry, "updated", None)
-
-        if getattr(entry, "title", None) and getattr(entry, "link", None) and published_date:
-            new_entries.append(
-                {
-                    "title": entry.title,
-                    "link": entry.link,
-                    "published": published_date,
-                    "id": getattr(entry, "id", entry.link),
-                }
-            )
-
-    print(f"   => RSSフィードから {len(new_entries)} 件の記事を取得しました。")
-
-    # 2. 既存のデータを読み込み
-    old_entries = []
-    if os.path.exists(JSON_FILE):
-        try:
-            with open(JSON_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                old_entries = data.get("entries", [])
-            print(f"2. 既存のJSONファイルから {len(old_entries)} 件の記事を読み込みました。")
-        except json.JSONDecodeError:
-            print("2. 既存のJSONファイルの形式が不正です。新規ファイルとして処理を続行します。")
-
-    # 3. 新旧データをマージし、重複を排除
-    existing_ids = {entry.get("id") for entry in old_entries if entry.get("id")}
-    unique_new_entries = [e for e in new_entries if e["id"] not in existing_ids]
-    merged_entries = unique_new_entries + old_entries
-    print(f"3. {len(unique_new_entries)} 件の新しい記事を追加しました。")
-
-    # 4. 日付順に並べ替え
-    def sort_key(entry):
-        # RSS/Atomで形式が揺れるので、feedparserのparsedがあればそれを優先しても良いが、
-        # ここでは既存ロジック維持のため簡易対応
-        try:
-            return datetime.strptime(entry["published"], "%a, %d %b %Y %H:%M:%S %z")
-        except Exception:
-            try:
-                return datetime.fromisoformat(entry["published"].replace("Z", "+00:00"))
-            except Exception:
-                return datetime.min
-
-    merged_entries.sort(key=sort_key, reverse=True)
-    print(f"   => 合計 {len(merged_entries)} 件の記事を最新順に並べ替えました。")
-
-    final_data = {"updated_at": datetime.now().isoformat(), "entries": merged_entries}
-
-    os.makedirs(os.path.dirname(JSON_FILE), exist_ok=True)
-    with open(JSON_FILE, "w", encoding="utf-8") as f:
-        json.dump(final_data, f, ensure_ascii=False, indent=2)
-
-    print(f"4. 最新のデータ ({len(merged_entries)} 件) を {JSON_FILE} に保存しました。")
-
-if __name__ == "__main__":
-    fetch_and_merge_data()
+def save_entries(entries):
