@@ -117,3 +117,51 @@ def load_old_entries():
 
 
 def save_entries(entries):
+    os.makedirs(os.path.dirname(JSON_FILE), exist_ok=True)
+    final_data = {"updated_at": datetime.now().isoformat(), "entries": entries}
+    with open(JSON_FILE, "w", encoding="utf-8") as f:
+        json.dump(final_data, f, ensure_ascii=False, indent=2)
+
+
+def fetch_and_merge_data():
+    print(f"1. 官報トップページ ({BASE_URL}) からデータを取得中...")
+
+    html = fetch_top_page_html()
+    published = extract_publish_date_from_html(html)
+
+    links = pick_today_links(html)
+    print(f"   => 候補リンク {len(links)} 件を抽出しました。")
+
+    # 取得件数を絞る（負荷/ノイズ対策）：上位20件まで
+    links = links[:20]
+
+    new_entries = []
+    for url, text, score in links:
+        title = text if text else url
+        new_entries.append(
+            {
+                "title": title,
+                "link": url,
+                "published": published,
+                "id": url,
+                "score": score,  # デバッグ用（不要なら削除OK）
+                "source": "kanpo.go.jp top page",
+            }
+        )
+
+    old_entries = load_old_entries()
+    existing_ids = {e.get("id") for e in old_entries if e.get("id")}
+    unique_new = [e for e in new_entries if e["id"] not in existing_ids]
+
+    merged = unique_new + old_entries
+    print(f"2. 新規 {len(unique_new)} 件を追加しました。")
+
+    # publishedは日付文字列なので、ここでは新規優先で先頭に積むだけでもOK
+    # 厳密ソートしたい場合は和暦→西暦変換が必要（後述）
+    save_entries(merged)
+
+    print(f"3. 合計 {len(merged)} 件を {JSON_FILE} に保存しました。")
+
+
+if __name__ == "__main__":
+    fetch_and_merge_data()
