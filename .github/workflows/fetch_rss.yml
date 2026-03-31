@@ -5,7 +5,7 @@ from datetime import datetime
 import requests
 import urllib3
 
-RSS_URL = "https://www.kanpo.go.jp/rss/latest.xml"
+RSS_URL = "http://www.kanpo.go.jp/rss/latest.xml"
 JSON_FILE = "data/kanpo_feed.json"
 LOCAL_XML = "data/latest.xml"
 
