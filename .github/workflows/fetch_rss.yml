@@ -1,57 +1,58 @@
-name: Fetch Kanpo RSS Feed
+# ワークフロー名：GitHub Actionsの実行履歴に表示される名前
+name: Fetch and Merge Kanpo RSS Data
 
+# 実行トリガー
 on:
+  push:
+    branches:
+      - main
+      - master
   schedule:
-    - cron: "0 21 * * *"   # 毎日06:00 JST
+    # 毎日 00:00 UTC（= JST 09:00）
+    - cron: "0 0 * * *"
   workflow_dispatch: {}
-
-permissions:
-  contents: write
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+
     steps:
+      # 1. リポジトリのチェックアウト（コードの取得）
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # 2. Python環境のセットアップ
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ★ここで「requirements.txtが本当に存在するか」を可視化
-      - name: Debug - show files
-        run: |
-          echo "== pwd =="; pwd
-          echo "== ls =="; ls -la
-          echo "== find requirements.txt =="; find . -maxdepth 2 -name "requirements.txt" -print
-
-      # ★ここで「同じpythonでpipを実行」するのが重要（pip単体は使わない）
-      - name: Install dependencies (must)
+      # 3. 依存関係のインストール（requests を確実に入れる）
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            echo "requirements.txt found -> installing"
-            python -m pip install -r requirements.txt
-          else
-            echo "requirements.txt NOT found -> installing directly"
-            python -m pip install feedparser requests certifi
-          fi
+          python -m pip install -r requirements.txt
 
-      # ★ここで「requestsが入ったか」を100%判定する
-      - name: Verify imports (must)
+      # 4. 依存が入ったかを確実に確認（初心者向け保険）
+      - name: Verify imports
         run: |
-          python -c "import requests, feedparser, certifi; print('requests=', requests.__version__); print('feedparser=', feedparser.__version__); print('certifi=', certifi.__version__)"
+          python -c "import requests, feedparser, certifi; print('OK:', requests.__version__, feedparser.__version__, certifi.__version__)"
 
+      # 5. データディレクトリの作成
       - name: Create data directory
         run: |
           mkdir -p data
 
+      # 6. Pythonスクリプトの実行（データ取得とマージ）
       - name: Run Python script
         run: |
           python fetch_rss.py
 
+      # 7. 変更があればコミット＆プッシュ（安全に：force なし）
       - name: Commit and push changes (if any)
         run: |
           git config user.name "github-actions[bot]"
@@ -63,5 +64,6 @@ jobs:
           fi
 
           git add data/kanpo_feed.json
-          git commit -m "Update kanpo_feed.json"
+          git commit -m "Auto: Update kanpo-rss data with new entries"
           git push
+``
