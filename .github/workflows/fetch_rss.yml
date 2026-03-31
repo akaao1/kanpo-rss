@@ -1,7 +1,5 @@
-# ワークフロー名：GitHub Actionsの実行履歴に表示される名前
 name: Fetch and Merge Kanpo RSS Data
 
-# 実行トリガー
 on:
   push:
     branches:
@@ -25,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2. Python環境のセットアップ
+      # 2. Python環境のセットアップ（v5推奨）
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -37,7 +35,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      # 4. 依存が入ったかを確実に確認（初心者向け保険）
+      # 4. 依存が入ったかを確実に確認（初心者向け・ここで100%切り分け可能）
       - name: Verify imports
         run: |
           python -c "import requests, feedparser, certifi; print('OK:', requests.__version__, feedparser.__version__, certifi.__version__)"
@@ -52,7 +50,7 @@ jobs:
         run: |
           python fetch_rss.py
 
-      # 7. 変更があればコミット＆プッシュ（安全に：force なし）
+      # 7. 変更があればコミット＆プッシュ（安全に：forceなし）
       - name: Commit and push changes (if any)
         run: |
           git config user.name "github-actions[bot]"
@@ -66,4 +64,3 @@ jobs:
           git add data/kanpo_feed.json
           git commit -m "Auto: Update kanpo-rss data with new entries"
           git push
-``
