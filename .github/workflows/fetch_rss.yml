@@ -6,51 +6,45 @@ on:
       - main
       - master
   schedule:
-    # 毎日 00:00 UTC（= JST 09:00）
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * *"   # 毎日 00:00 UTC（= JST 09:00）
   workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
 
     steps:
-      # 1. リポジトリのチェックアウト（コードの取得）
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Python環境のセットアップ（v5推奨）
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3. 依存関係のインストール（requests を確実に入れる）
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      # 4. 依存が入ったかを確実に確認（初心者向け・ここで100%切り分け可能）
+      # ★これが「出るか出ないか」で、反映できたか一発で分かります
       - name: Verify imports
         run: |
           python -c "import requests, feedparser, certifi; print('OK:', requests.__version__, feedparser.__version__, certifi.__version__)"
 
-      # 5. データディレクトリの作成
       - name: Create data directory
         run: |
           mkdir -p data
 
-      # 6. Pythonスクリプトの実行（データ取得とマージ）
       - name: Run Python script
         run: |
           python fetch_rss.py
 
-      # 7. 変更があればコミット＆プッシュ（安全に：forceなし）
       - name: Commit and push changes (if any)
         run: |
           git config user.name "github-actions[bot]"
