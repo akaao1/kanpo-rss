@@ -1,32 +1,64 @@
 name: Fetch Kanpo RSS Feed
 
 on:
-  # 毎日、日本時間の午前8時45分（UTC 23:45）に実行するスケジュール設定
   schedule:
-    - cron: '45 23 * * *' 
-  # Actionsタブから手動で実行できるようにするボタンを追加
-  workflow_dispatch:
+    # 毎日 06:00 JST（UTC 21:00）
+    - cron: "0 21 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
-  fetch-feed:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: リポジトリのコードをチェックアウト
-        # このステップで、作業スペースにリポジトリの内容をダウンロードします
+      - name: Checkout repository
         uses: actions/checkout@v4
-      
-      # 外部のRSSをJSONに変換して 'data/kanpo_feed.json' に保存する
-      - name: RSSフィードを取得してJSONとして保存
-        # 外部のRSS/Atomフィードを読み込み、扱いやすいJSON形式に変換してくれるツールです
-        uses: Promptly-Technologies-LLC/rss-fetch-action@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          feed_url: 'https://kanpo-viewer.com/feed_toc.xml'
-          file_path: './data/kanpo_feed.json' 
-          
-      # 変更されたJSONファイルを自動でリポジトリにコミット（保存）
-      - name: 変更をコミットしてプッシュ
-        # Actionsが作成・変更したファイルを、リポジトリにアップロードし直すツールです
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: '自動：官報目次フィードデータの更新'
-          file_pattern: 'data/kanpo_feed.json'
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ネットワーク切り分け用（失敗時の原因が分かりやすい）
+      - name: Quick connectivity check (optional)
+        run: |
+          python - << 'PY'
+          import ssl, urllib.request
+          url = "https://www.kanpo.go.jp/rss/latest.xml"
+          print("Checking:", url)
+          try:
+            ctx = ssl.create_default_context()
+            with urllib.request.urlopen(url, context=ctx, timeout=20) as r:
+              print("HTTP status:", r.status)
+              print("Content-Type:", r.headers.get("Content-Type"))
+          except Exception as e:
+            print("Connectivity check failed:", type(e).__name__, e)
+            raise
+          PY
+
+      - name: Run Python script
+        run: |
+          python fetch_rss.py
+
+      - name: Commit and push changes (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 差分がないなら何もしない
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git add data/kanpo_feed.json
+          git commit -m "Update kanpo_feed.json"
+          git push
